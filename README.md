@@ -5,7 +5,7 @@ Very basic program to test a gamepad with [Ebitengine](https://github.com/hajime
 go run github.com/tinne26/gamepad-quicktest@latest
 ```
 
-Web version also available at [https://tinne26.github.io/gamepad-quicktest/].
+Interactive web version also available at [tinne26.github.io/gamepad-quicktest](https://tinne26.github.io/gamepad-quicktest/).
 
 Sample visual output:
 
