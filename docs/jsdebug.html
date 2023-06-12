@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="description" content="Gamepad JS debug">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Gamepad JS debug</title>
+
+		<style>
+			body {
+				max-width: 900px;
+				margin: 0 auto;
+				margin-bottom: 116px;
+				font-size: 17px;
+			}
+		</style>
+
+		<script>
+			window.addEventListener('load', onLoad);
+			function onLoad() {
+				window.addEventListener('gamepadconnected', updateGamepadsList);
+				window.addEventListener('gamepaddisconnected', updateGamepadsList);
+			}
+
+			function updateGamepadsList() {
+				var list = document.getElementById('gamepad-list');
+				list.innerHTML = "";
+				var needsDots = true;
+				var gamepads = navigator.getGamepads();
+
+				for (let i = 0; i < gamepads.length; i++) { 
+  					let gamepad = gamepads[i];
+					if (gamepad != null) {
+						needsDots = false;
+						var item = document.createElement('li');
+						item.innerHTML = gamepad.id;
+						list.appendChild(item);
+					}
+				}
+				if (needsDots) {
+					var item = document.createElement('li');
+					item.innerHTML = '...';
+					list.appendChild(item);
+				}
+			}
+
+			function logGamepads() {
+				console.log(navigator.getGamepads());
+			}
+
+			function logHapticActuators() {
+				let gamepads = navigator.getGamepads();
+				if (gamepads.length > 0) {
+					let ha = gamepads[0].hapticActuators;
+					console.log(gamepads[0].id + '.hapticActuators = ' + JSON.stringify(ha) + ' (' + (typeof ha) + ')');
+				} else {
+					console.log('No gamepads available.');
+				}
+			}
+			
+			function logVibrationActuator() {
+				let gamepads = navigator.getGamepads();
+				if (gamepads.length > 0) {
+					let va = gamepads[0].vibrationActuator;
+					console.log(gamepads[0].id + '.vibrationActuator = ' + JSON.stringify(va) + ' (' + (typeof va) + ')');
+				} else {
+					console.log('No gamepads available.');
+				}
+			}
+
+			function pulse() {
+				let gamepads = navigator.getGamepads();
+				if (gamepads.length > 0) {
+					console.log('Triggering pulse on ' + gamepads[0].id);
+					gamepads[0].hapticActuators[0].pulse(1.0, 500);
+				} else {
+					console.log('No gamepads available.');
+				}
+			}
+
+			function dualRumble() {
+				let gamepads = navigator.getGamepads();
+				if (gamepads.length > 0) {
+					console.log('Triggering dual rumble on ' + gamepads[0].id);
+					gamepads[0].vibrationActuator.playEffect("dual-rumble", {
+						startDelay: 0,
+						duration: 400,
+						weakMagnitude: 1.0,
+						strongMagnitude: 0.8,
+					});
+				} else {
+					console.log('No gamepads available.');
+				}
+			}
+		</script>
+	</head>
+
+	<body>
+		<h2>Gamepads test</h2>
+		<p>Connect a gamepad and press some buttons to make the browser detect it:</p>
+		<ul id="gamepad-list">
+			<li>(no gamepad detected)</li>
+		</ul>
+		<hr>
+
+		<h3>Test functions</h3>
+		<p>Results are printed to the dev console:</p>
+		<ul>
+			<li><button onclick="logGamepads();">Get gamepads</button></li>
+			<li><button onclick="logVibrationActuator();">gamepad.vibrationActuator</button></li>
+			<li><button onclick="logHapticActuators();">gamepad.hapticActuators</button></li>
+			<li><button onclick="pulse();">gamepad.hapticActuators[0].pulse()</button></li>
+			<li><button onclick="dualRumble();">gamepad.hapticActuators[0].pulse()</button></li>
+		</ul>
+	</body>
+</html>
