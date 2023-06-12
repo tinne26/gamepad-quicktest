@@ -2,9 +2,11 @@ package main
 
 import "fmt"
 import "log"
+import "time"
 import "math"
 import "errors"
 import "strconv"
+import "runtime"
 import "image/color"
 
 import "github.com/hajimehoshi/ebiten/v2"
@@ -15,6 +17,7 @@ var ErrExit error = errors.New("esc to exit the program")
 var (
 	BackColor  = color.RGBA{0, 24, 28, 255}
 	MainColor  = color.RGBA{239, 241, 197, 255}
+	NoteColor  = reAlpha(MainColor, 144)
 	FocusColor = color.RGBA{234, 82, 111, 255}
 )
 
@@ -27,10 +30,17 @@ type View struct {
 	axisValues []float64
 
 	// internal variables
+	tick int
 	lastCanvasWidth float64
 	lastCanvasHeight float64
 	lastDisplayScale float64
-	fsKeyPressed bool
+	fsKeyPressed  bool
+	dirKeyPressed bool
+	dirLastTrigger int
+	vibrateDuration time.Duration
+	vibrateLowFreq  uint8
+	vibrateHighFreq uint8
+	vibrateTimeoutTick int
 }
 
 func (self *View) Layout(int, int) (int, int) { panic("ebitengine >= v2.5.0") }
@@ -52,8 +62,11 @@ func (self *View) LayoutF(logicWinWidth, logicWinHeight float64) (float64, float
 }
 
 func (self *View) Update() error {
+	// increase current tick
+	self.tick += 1
+
 	// detect game being closed
-	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
+	if ebiten.IsKeyPressed(ebiten.KeyEscape) && runtime.GOOS != "js" {
 		return ErrExit
 	}
 
@@ -96,6 +109,62 @@ func (self *View) Update() error {
 		self.axisValues = self.axisValues[ : axisCount]
 	}
 
+	// adjust vibration params
+	left  := ebiten.IsKeyPressed(ebiten.KeyArrowLeft)
+	right := ebiten.IsKeyPressed(ebiten.KeyArrowRight)
+	if left != right {
+		trigger := !self.dirKeyPressed || self.tick - self.dirLastTrigger > 8
+		self.dirKeyPressed = true
+		if trigger {
+			self.dirLastTrigger = self.tick
+			if ebiten.IsKeyPressed(ebiten.KeyD) { // high freq
+				if right { // increase
+					if self.vibrateDuration < 8*time.Second {
+						self.vibrateDuration += 100*time.Millisecond
+					}
+				} else { // decrease
+					if self.vibrateDuration > 0 {
+						self.vibrateDuration -= 100*time.Millisecond
+					}
+				}
+			} else if ebiten.IsKeyPressed(ebiten.KeyL) { // low freq
+				if right { // increase
+					if self.vibrateLowFreq < 100 {
+						self.vibrateLowFreq += 5
+					}
+				} else { // decrease
+					if self.vibrateLowFreq > 0 {
+						self.vibrateLowFreq -= 5
+					}
+				}
+			} else if ebiten.IsKeyPressed(ebiten.KeyH) { // high freq
+				if right { // increase
+					if self.vibrateHighFreq < 100 {
+						self.vibrateHighFreq += 5
+					}
+				} else { // decrease
+					if self.vibrateHighFreq > 0 {
+						self.vibrateHighFreq -= 5
+					}
+				}
+			}
+		}
+	} else {
+		self.dirKeyPressed = false
+	}
+
+	// trigger vibration
+	if ebiten.IsKeyPressed(ebiten.KeyV) && self.tick > self.vibrateTimeoutTick && len(self.gamepadIds) > 0 {
+		gamepadId := self.gamepadIds[0]
+		opts := ebiten.VibrateGamepadOptions{
+			Duration: self.vibrateDuration,
+			StrongMagnitude: float64(self.vibrateLowFreq)/100.0,
+			WeakMagnitude: float64(self.vibrateHighFreq)/100.0,
+		}
+		self.vibrateTimeoutTick = self.tick + int(math.Ceil(self.vibrateDuration.Seconds()*60.0)) + 1
+		ebiten.VibrateGamepad(gamepadId, &opts)
+	}
+
 	return nil
 }
 
@@ -107,7 +176,7 @@ func (self *View) Draw(canvas *ebiten.Image) {
 	baseX, tabX := int(lineAdvance), int(lineAdvance*2.0)
 	y := lineAdvance*1.6
 	if len(self.gamepadIds) == 0 {
-		self.text.Draw(canvas, "No gamepads detected\nDid you plug it in already?", baseX, int(y))
+		self.text.Draw(canvas, "No gamepads detected\nPlug it in and press a button.", baseX, int(y))
 	} else { // len(self.gamepadIds) > 0
 		// "Detected N gamepads"
 		self.text.Draw(canvas, "Detected " + strconv.Itoa(len(self.gamepadIds)) + " gamepad(s)", baseX, int(y))
@@ -128,7 +197,7 @@ func (self *View) Draw(canvas *ebiten.Image) {
 		y += lineAdvance
 		self.text.SetColor(FocusColor)
 		if len(self.axisValues) == 0 {
-			self.text.Draw(canvas, "(No axes detected)", int(lineAdvance*2), int(y))
+			self.text.Draw(canvas, "(No axes detected)", tabX, int(y))
 			y += lineAdvance
 		} else {
 			hint := []string{
@@ -143,8 +212,8 @@ func (self *View) Draw(canvas *ebiten.Image) {
 				self.text.Draw(canvas, floatStr, int(lineAdvance*2), int(y))
 				if len(hint) > i {
 					offset := self.text.Measure(floatStr).Width().ToFloat64() + lineAdvance
-					self.text.SetColor(reAlpha(MainColor, 144))
-					self.text.Draw(canvas, "(" + hint[i] + ")", int(lineAdvance*2 + offset), int(y))
+					self.text.SetColor(NoteColor)
+					self.text.Draw(canvas, "(" + hint[i] + ")", tabX + int(offset), int(y))
 					self.text.SetColor(FocusColor)
 				}
 				y += lineAdvance
@@ -172,24 +241,74 @@ func (self *View) Draw(canvas *ebiten.Image) {
 			y += lineAdvance
 		}
 		self.text.SetColor(MainColor)
+
+		// vibration test
+		y += lineAdvance*0.5
+		self.text.Draw(canvas, "Vibration test:", baseX, int(y))
+		y += lineAdvance
+		self.text.SetColor(NoteColor)
+
+		if runtime.GOOS == "js" {
+			if self.tick < self.vibrateTimeoutTick {
+				self.text.Draw(canvas, "[Vibration triggered...]", tabX, int(y))
+			} else {
+				self.text.Draw(canvas, "Press [V] to start vibration", tabX, int(y))
+			}
+			
+			y += lineAdvance
+			auxX := int(float64(tabX)*5.5)
+			
+			self.text.SetColor(FocusColor)
+			self.text.Draw(canvas, fmt.Sprintf("%.2f seconds", self.vibrateDuration.Seconds()), tabX, int(y))
+			self.text.SetColor(NoteColor)
+			self.text.Draw(canvas, "(D + Right/Left)", auxX, int(y))
+			y += lineAdvance
+			
+			self.text.SetColor(FocusColor)
+			self.text.Draw(canvas, fmt.Sprintf("%03d%% low  freq.", self.vibrateLowFreq), tabX, int(y))
+			self.text.SetColor(NoteColor)
+			self.text.Draw(canvas, "(L + Right/Left)", auxX, int(y))
+			y += lineAdvance
+	
+			self.text.SetColor(FocusColor)
+			self.text.Draw(canvas, fmt.Sprintf("%03d%% high freq.", self.vibrateHighFreq), tabX, int(y))
+			self.text.SetColor(NoteColor)
+			self.text.Draw(canvas, "(H + Right/Left)", auxX, int(y))
+			y += lineAdvance
+		} else {
+			self.text.Draw(canvas, "(only available on browsers)", tabX, int(y))
+			y += lineAdvance
+		}
 	}
 }
 
 func main() {
+	// create text renderer
 	renderer := etxt.NewRenderer()
 	renderer.Utils().SetCache8MiB()
 	renderer.SetFont(lbrtmono.Font())
 	renderer.SetSize(16)
 	renderer.SetAlign(etxt.Left | etxt.TopBaseline)
 
-	fmt.Printf("Axis labels are only hints, they may not match your controller.\n")
-	fmt.Printf("Press F to fullscreen, ESC to close the program.\n")
+	// print instructions
+	fmt.Print("Axis labels are only hints, they may not match your controller.\n")
+	fmt.Print("Press F to fullscreen")
+	if runtime.GOOS != "js" { fmt.Print(", ESC to close the program") }
+	fmt.Print(".\n")
 
+	// create app view
+	view := &View{
+		text: renderer,
+		vibrateDuration: 1500*time.Millisecond,
+		vibrateHighFreq: 50,
+	}
+
+	// set up window and run
 	ebiten.SetWindowSize(640, 480)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetWindowTitle("tinne/gamepad-quicktest")
 	ebiten.SetScreenClearedEveryFrame(false)
-	err := ebiten.RunGame(&View{ text: renderer })
+	err := ebiten.RunGame(view)
 	if err != nil && err != ErrExit { log.Fatal(err) }
 }
 
