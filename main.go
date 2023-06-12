@@ -176,7 +176,7 @@ func (self *View) Draw(canvas *ebiten.Image) {
 	baseX, tabX := int(lineAdvance), int(lineAdvance*2.0)
 	y := lineAdvance*1.6
 	if len(self.gamepadIds) == 0 {
-		self.text.Draw(canvas, "No gamepads detected\nPlug it in and press a button.", baseX, int(y))
+		self.text.Draw(canvas, "No gamepads detected.\nPlug one and press some buttons.", baseX, int(y))
 	} else { // len(self.gamepadIds) > 0
 		// "Detected N gamepads"
 		self.text.Draw(canvas, "Detected " + strconv.Itoa(len(self.gamepadIds)) + " gamepad(s)", baseX, int(y))
@@ -244,15 +244,15 @@ func (self *View) Draw(canvas *ebiten.Image) {
 
 		// vibration test
 		y += lineAdvance*0.5
-		self.text.Draw(canvas, "Vibration test:", baseX, int(y))
+		self.text.Draw(canvas, "Rumble test:", baseX, int(y))
 		y += lineAdvance
 		self.text.SetColor(NoteColor)
 
 		if runtime.GOOS == "js" {
 			if self.tick < self.vibrateTimeoutTick {
-				self.text.Draw(canvas, "[Vibration triggered...]", tabX, int(y))
+				self.text.Draw(canvas, "[Rumble triggered...]", tabX, int(y))
 			} else {
-				self.text.Draw(canvas, "Press [V] to start vibration", tabX, int(y))
+				self.text.Draw(canvas, "Press [V] to start rumble", tabX, int(y))
 			}
 			
 			y += lineAdvance
