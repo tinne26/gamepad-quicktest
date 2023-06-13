@@ -7,8 +7,6 @@ github.com/hajimehoshi/ebiten/v2 v2.5.2 h1:/NPHsq2EdZ/4yRT6p+I8OHzXgWePl8NYgkg8P
 github.com/hajimehoshi/ebiten/v2 v2.5.2/go.mod h1:mnHSOVysTr/nUZrN1lBTRqhK4NG+T9NR3JsJP2rCppk=
 github.com/jezek/xgb v1.1.0 h1:wnpxJzP1+rkbGclEkmwpVFQWpuE2PUGNUzP8SbfFobk=
 github.com/jezek/xgb v1.1.0/go.mod h1:nrhwO0FX/enq75I7Y7G8iN1ubpSGZEiA3v9e9GyRFlk=
-github.com/tinne26/etxt v0.0.9-alpha.4 h1:K/1by6UlBEsqm3QCzLro0UiMstWSM1OBe5YvV98uwsQ=
-github.com/tinne26/etxt v0.0.9-alpha.4/go.mod h1:rpIkWvDlypRlEo+aeTwugfaqYBRfvAiGk23MIsPnvz0=
 github.com/tinne26/etxt v0.0.9-alpha.5 h1:FExJYwcTHEfq3xOtuWiifoOvFmReaTQf/UcTT9mEijA=
 github.com/tinne26/etxt v0.0.9-alpha.5/go.mod h1:yM7yXPESWb/0krZXjEtjZ4pG+NclezVfaLWSHIRgta8=
 github.com/tinne26/fonts/liberation/lbrtmono v0.0.0-20230317183620-0b634734e4ec h1:4HJF4UmQCvtxC5oIHr+JcQoM6muhc6FA/h9pf9DNXcA=

@@ -17,7 +17,7 @@ var ErrExit error = errors.New("esc to exit the program")
 var (
 	BackColor  = color.RGBA{0, 24, 28, 255}
 	MainColor  = color.RGBA{239, 241, 197, 255}
-	NoteColor  = reAlpha(MainColor, 144)
+	NoteColor  = color.RGBA{134, 136, 111, 144}
 	FocusColor = color.RGBA{234, 82, 111, 255}
 )
 
@@ -310,15 +310,4 @@ func main() {
 	ebiten.SetScreenClearedEveryFrame(false)
 	err := ebiten.RunGame(view)
 	if err != nil && err != ErrExit { log.Fatal(err) }
-}
-
-// Rescale the given color to the given alpha.
-func reAlpha(clr color.RGBA, alpha uint8) color.RGBA {
-	scalingFactor := float64(alpha)/float64(clr.A)
-	return color.RGBA{
-		R: uint8(scalingFactor*float64(clr.R)),
-		G: uint8(scalingFactor*float64(clr.G)),
-		B: uint8(scalingFactor*float64(clr.B)),
-		A: uint8(alpha),
-	}
 }
