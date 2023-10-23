@@ -41,6 +41,10 @@ type View struct {
 	vibrateLowFreq  uint8
 	vibrateHighFreq uint8
 	vibrateTimeoutTick int
+
+	// axis hints
+	axisHints []string
+	triggerHintsSet bool
 }
 
 func (self *View) Layout(int, int) (int, int) { panic("ebitengine >= v2.5.0") }
@@ -107,6 +111,25 @@ func (self *View) Update() error {
 			self.axisValues[i] = ebiten.GamepadAxisValue(gamepadId, i)
 		}
 		self.axisValues = self.axisValues[ : axisCount]
+
+		// improve axis name auto-detection
+		if !self.triggerHintsSet && axisCount >= 6 {
+			const L2 = ebiten.StandardGamepadButtonFrontBottomLeft
+			const R2 = ebiten.StandardGamepadButtonFrontBottomRight
+			leftTriggerPressed  := ebiten.IsStandardGamepadButtonPressed(gamepadId, L2)
+			rightTriggerPressed := ebiten.IsStandardGamepadButtonPressed(gamepadId, R2)
+			var nameTriggers = func(l, r int) {
+				self.axisHints[l], self.axisHints[r] = "left trigger", "right trigger"
+				self.triggerHintsSet = true
+			}
+			if leftTriggerPressed && !rightTriggerPressed {
+				if self.axisValues[4] > self.axisValues[5] { nameTriggers(4, 5) }
+				if self.axisValues[5] > self.axisValues[4] { nameTriggers(5, 4) }
+			} else if rightTriggerPressed && !leftTriggerPressed {
+				if self.axisValues[4] > self.axisValues[5] { nameTriggers(5, 4) }
+				if self.axisValues[5] > self.axisValues[4] { nameTriggers(4, 5) }
+			}
+		}
 	}
 
 	// adjust vibration params
@@ -200,20 +223,15 @@ func (self *View) Draw(canvas *ebiten.Image) {
 			self.text.Draw(canvas, "(No axes detected)", tabX, int(y))
 			y += lineAdvance
 		} else {
-			hint := []string{
-				"left joystick horz", "left joystick vert",
-				"right joystick horz", "right joystick vert",
-				"left trigger", "right trigger",
-			}
 			for i, value := range self.axisValues {
 				floatStr := strconv.FormatFloat(value, 'f', 2, 64)
 				if floatStr == "-0.00" { floatStr = "0.00" }
 				if floatStr[0] != '-' { floatStr = " " + floatStr }
 				self.text.Draw(canvas, floatStr, int(lineAdvance*2), int(y))
-				if len(hint) > i {
+				if len(self.axisHints) > i {
 					offset := self.text.Measure(floatStr).Width().ToFloat64() + lineAdvance
 					self.text.SetColor(NoteColor)
-					self.text.Draw(canvas, "(" + hint[i] + ")", tabX + int(offset), int(y))
+					self.text.Draw(canvas, "(" + self.axisHints[i] + ")", tabX + int(offset), int(y))
 					self.text.SetColor(FocusColor)
 				}
 				y += lineAdvance
@@ -301,6 +319,11 @@ func main() {
 		text: renderer,
 		vibrateDuration: 1500*time.Millisecond,
 		vibrateHighFreq: 50,
+		axisHints: []string{
+			"left joystick horz", "left joystick vert",
+			"right joystick horz", "right joystick vert",
+			"first trigger", "second trigger",
+		},
 	}
 
 	// set up window and run
